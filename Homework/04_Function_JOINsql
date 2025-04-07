@@ -1,0 +1,160 @@
+-- 1. 직원명과 이메일, 이메일 길이를 출력하세요
+
+SELECT EMP_NAME, EMAIL, LENGTH(EMAIL)
+FROM EMPLOYEE;
+
+--3. 60년대에 태어난 직원명과 년생, 보너스 값을 출력하시오, 그때 보너스 값이 NULL인 경우에는 0이라고 출력 되게 만드시오
+SELECT EMP_NAME , 19 || TO_NUMBER(SUBSTR(EMP_NO,1,2),'99')AS 년생, NVL(BONUS,0) AS 보너스
+FROM EMPLOYEE;
+
+-- 4. '010' 핸드폰 번호를 쓰지 않는 사람의 수를 출력하시오(뒤에 단위는 명을 붙이시오)
+SELECT COUNT(PHONE) AS "010 안쓰는 사람"
+FROM EMPLOYEE
+WHERE SUBSTR(PHONE,1,3) != '010';
+
+-- 5. 직원명과 입사년월일을 출력하시오(단, 아래와 같이 출력되도록 만들어 보시오)
+-- 그냥 CHAR에다가 넣고 형식을 입력하면된다.
+SELECT EMP_NAME AS 직원명, TO_CHAR(HIRE_DATE,'YYYY"년" MM"월"') AS 입사년월
+FROM EMPLOYEE;
+
+--6. 직원명과 주민번호를 조회하시오
+SELECT EMP_NAME AS 이름, SUBSTR(EMP_NO,1,8) || '******' AS 주민번호
+FROM EMPLOYEE;
+
+-- 7. 직원명, 직급코드, 연봉(원) 조회 ( 단, 연봉은 \57,000,000DMFH 표시되게 함 연봉은 보너스포인트가 적용된 1년치 급여임
+SELECT EMP_NAME AS 직원명, DEPT_CODE AS 직급코드, 
+TO_CHAR((SALARY + SALARY*NVL(BONUS,0))*12,'L999,999,999,999') AS 연봉
+FROM EMPLOYEE;
+-- TO_NUMBER로 하면 오류남
+
+-- 8. 부서코드가 D5,D9인 직원들 중에서 2004년도에 입사한 직원중에 조회함
+SELECT *
+FROM EMPLOYEE
+WHERE DEPT_CODE IN ('D5','D9') AND SUBSTR(HIRE_DATE,1,2) ='04';
+
+-- 9. 직원명, 입사일 오늘까지의 근무일수 조회 * 주말도 포함
+
+SELECT EMP_NAME AS 직원명, FLOOR(SYSDATE-HIRE_DATE) AS 근무일수
+FROM EMPLOYEE;
+
+-- 11. 직원들의 입사일로 부터 년도만 가지고, 각 년도별 입사인원수를 구하시오
+-- 아래의 년도에 입사한 인원수를 조회하시오 마지막으로 전체직원수도 구하시오
+
+SELECT COUNT(DECODE(SUBSTR(HIRE_DATE,1,2),'98',1)) AS "1998년",
+COUNT(DECODE(SUBSTR(HIRE_DATE,1,2),'99',1)) AS "1999년",
+COUNT(DECODE(SUBSTR(HIRE_DATE,1,2),'00',1)) AS "2000년",
+COUNT(DECODE(SUBSTR(HIRE_DATE,1,2),'01',1)) AS "2001년",
+COUNT(DECODE(SUBSTR(HIRE_DATE,1,2),'02',1)) AS "2002년",
+COUNT(DECODE(SUBSTR(HIRE_DATE,1,2),'03',1)) AS "2003년",
+COUNT(DECODE(SUBSTR(HIRE_DATE,1,2),'04',1)) AS "2004년",
+SUM(DECODE(EMP_NAME, NULL, 0, 1)) AS "전체인원수"
+FROM EMPLOYEE;
+
+-- ** DECODE는 JAVA에서 IF 문과 비슷하다 위의 경우 EMP_NAME이 NULL이면 0 아니면 1을 출력 하는 것 
+
+-- 12. 사원명과 부서명을 출력하세요
+-- 부서코드가 D5라이면 총무부,D6이면 기획부, D9이면 영어부로 처리하시오(CASE 사용)
+-- 단 부서코드가 D5,D6,D9인 직원의 정보만 조회하고, 부서코드 기준으로 오름차순 정렬함
+
+SELECT EMP_NAME AS 사원명, CASE DEPT_CODE
+WHEN 'D5' THEN '총무부'
+WHEN 'D6' THEN '기획부'
+WHEN 'D9' THEN '영어부'
+END AS 부서명
+FROM EMPLOYEE
+WHERE DEPT_CODE IN ('D5','D6','D9');
+
+-- CASE 문의 경우 CASE 다음 컬럼명을 적고 자바에서 스위치와 같이 코딩한다.
+-- STRING 타입이기 때문에 D5 가 아닌 'D5'로 적고 총무부와 같은것도 ''를 사용한다.
+
+-- EMPLOYEE 테이블에서 직급이 J1인 제외하고, 직급별 사원수 및 평균급여를 출력하세요
+
+--SELECT 
+--COUNT(DECODE(JOB_CODE,'J2',1)) AS 부사장,
+--COUNT(DECODE(JOB_CODE,'J3',1)) AS 부장,
+--COUNT(DECODE(JOB_CODE,'J4',1)) AS 차장,
+--COUNT(DECODE(JOB_CODE,'J5',1)) AS 과장,
+--COUNT(DECODE(JOB_CODE,'J6',1)) AS 대리,
+--COUNT(DECODE(JOB_CODE,'J7',1)) AS 사원
+--
+--FROM EMPLOYEE
+--JOIN JOB USING(JOB_CODE)
+--
+--WHERE JOB_CODE != 'J1';
+
+SELECT JOB_NAME AS 직책,FLOOR(AVG(SALARY)) AS 월급 ,COUNT(DEPT_CODE) AS 인원수
+FROM EMPLOYEE JOIN JOB USING (JOB_CODE)
+WHERE JOB_CODE != 'J1'
+GROUP BY JOB_NAME;
+ -- 그룹이 웨어 밑에 있어야한다.
+
+--EMPLOYEE테이블에서 직급이 J1을 제외하고,  입사년도별 인원수를 조회해서, 입사년 기준으로 오름차순 정렬하세요.
+
+SELECT 
+    CASE 
+        WHEN SUBSTR(TO_CHAR(HIRE_DATE, 'YYYY'), 3, 1) IN ('0', '1') THEN '20' 
+        || SUBSTR(TO_CHAR(HIRE_DATE, 'YYYY'), 3, 2)
+        ELSE '19' || SUBSTR(TO_CHAR(HIRE_DATE, 'YYYY'), 3, 2)
+        END AS 입사년도, 
+        COUNT(*) AS 인원수, 
+        AVG(SALARY) AS 평균연봉
+FROM EMPLOYEE
+WHERE JOB_CODE != 'J1'
+GROUP BY 
+    CASE 
+        WHEN SUBSTR(TO_CHAR(HIRE_DATE, 'YYYY'), 3, 1) IN ('0', '1') THEN '20' || SUBSTR(TO_CHAR(HIRE_DATE, 'YYYY'), 3, 2)
+        ELSE '19' || SUBSTR(TO_CHAR(HIRE_DATE, 'YYYY'), 3, 2)
+        END
+ORDER BY 입사년도;
+
+-- [EMPLOYEE] 테이블에서 EMP_NO의 8번째 자리가 1, 3 이면 '남', 2, 4 이면 '여'로 결과를 조회하고,
+ 
+ SELECT DECODE(SUBSTR(EMP_NO,8,1),'1','남','2','여','3','남','4','여') AS 성별, FLOOR(AVG(SALARY)) AS 성별평균급여
+ , COUNT(DECODE(SUBSTR(EMP_NO,8,1),'1','남','2','여','3','남','4','여')) AS 인원수
+ FROM EMPLOYEE
+ GROUP BY DECODE(SUBSTR(EMP_NO,8,1),'1','남','2','여','3','남','4','여')
+ ORDER BY COUNT(DECODE(SUBSTR(EMP_NO,8,1),'1','남','2','여','3','남','4','여')) DESC;
+ 
+ --부서내 성별 인원수를 구하세요.
+SELECT DEPT_TITLE AS 부서명 , COUNT(*) AS 이름수
+FROM EMPLOYEE
+JOIN DEPARTMENT ON DEPT_CODE = DEPT_ID
+GROUP BY DEPT_TITLE;
+ 
+ --부서별 인원이 3명보다 많은 부서와 인원수를 출력하세요
+ SELECT DEPT_TITLE AS 부서명 , COUNT(*) AS 이름수
+FROM EMPLOYEE
+JOIN DEPARTMENT ON DEPT_CODE = DEPT_ID
+GROUP BY DEPT_TITLE
+HAVING COUNT(*) >=3;
+ -- HAVING 절을 사용하여 그룹화된 데이터에 조건을 걸어야한다.
+ 
+ --부서별 직급별 인원수가 3명이상인 직급의 부서코드, 직급코드, 인원수를 출력하세요.
+SELECT JOB_CODE AS 직급코드, DEPT_CODE AS 부서코드 , COUNT(*) AS 인원수
+FROM EMPLOYEE
+JOIN JOB USING (JOB_CODE)
+GROUP BY JOB_CODE, DEPT_CODE
+HAVING COUNT(*) >=3;
+ 
+ --매니져가 관리하는 사원이 2명이상인 매니져아이디와 관리하는 사원수를 출력하세요.
+
+SELECT MANAGER_ID AS 매니저이디 , COUNT(*) AS 관리사원수
+FROM EMPLOYEE
+GROUP BY MANAGER_ID 
+HAVING MANAGER_ID IS NOT NULL AND COUNT(*) >=2
+ORDER BY COUNT(*);
+
+ --부서명과 지역명을 출력하세요. DEPARTMENT, LOCATION 테이블 이용.
+ SELECT DEPT_TITLE AS 부서명, LOCAL_NAME AS 지역명
+ FROM EMPLOYEE
+ JOIN DEPARTMENT ON DEPT_CODE = DEPT_ID
+ JOIN LOCATION ON LOCATION_ID = LOCAL_CODE;
+ 
+ --지역명과 국가명을 출력하세요. LOCATION, NATION 테이블
+ --지역명과 국가명을 출력하세요. LOCATION, NATION 테이블을 조인하되 USING을 사용할것.
+ SELECT E.*, LOCAL_NAME AS 지역명 ,NATIONAL_NAME AS 국가명
+ FROM EMPLOYEE E
+ JOIN DEPARTMENT ON DEPT_CODE = DEPT_ID
+ JOIN LOCATION ON LOCATION_ID = LOCAL_CODE
+ JOIN NATIONAL USING (NATIONAL_CODE) ;
+ 

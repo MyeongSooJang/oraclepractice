@@ -1,0 +1,120 @@
+-- 1. 70년대 생(1970~1979) 중 여자이면서 전씨인 사원의 이름과 주민번호, 부서 명, 직급 조회
+
+SELECT * 
+FROM 
+(SELECT *
+FROM EMPLOYEE
+JOIN JOB USING (JOB_CODE)
+JOIN DEPARTMENT ON DEPT_ID = DEPT_CODE) A
+WHERE A.EMP_NAME LIKE '전%' AND DECODE(SUBSTR(EMP_NO,8,1),'1','남','2','여') = '여';
+
+-- 2. 나이 상 가장 막내의 사원 코드, 사원 명, 나이, 부서 명, 직급 명 조회
+SELECT D.EMP_ID, D.EMP_NAME, D.나이, D.DEPT_TITLE, D.JOB_NAME
+FROM (
+    SELECT EMP_ID, 
+           EMP_NAME, 
+           EXTRACT(YEAR FROM SYSDATE) - (CASE 
+                                            WHEN TO_NUMBER(SUBSTR(EMP_NO, 8, 1)) <= 2 THEN 1900 + TO_NUMBER(SUBSTR(EMP_NO, 1, 2))
+                                            ELSE 2000 + TO_NUMBER(SUBSTR(EMP_NO, 1, 2)) 
+                                        END) AS 나이,
+           DEPT_TITLE, 
+           JOB_NAME
+    FROM EMPLOYEE 
+    JOIN DEPARTMENT ON DEPT_ID = DEPT_CODE
+    JOIN JOB USING (JOB_CODE)
+    ORDER BY 나이 ASC
+) D
+WHERE ROWNUM = 1;
+
+--별칭을 부여해야지 가져 올 수 있음...
+
+--3. 이름에 '형'이 들어가는 사원의 사원코드, 사원명, 직급 조회
+
+SELECT EMP_ID AS "사원 코드", 
+EMP_NAME AS 사원명, (SELECT JOB_NAME FROM JOB WHERE JOB_CODE = EMPLOYEE.JOB_CODE) AS 직급
+FROM EMPLOYEE
+WHERE EMP_NAME LIKE '%형%';
+
+-- 위에 처럼 하게 되면 JOB에서 여러개가 나올 수 있으니 오류가 발생
+
+-- 4. 부서코드가 D5이거나 D6인 사원의 사원 명, 직급 명, 부서 코드, 부서 명 조회
+
+SELECT EMP_NAME AS 사원이름, JOB_NAME AS 직급, DEPT_CODE AS "부서 코드", 
+DEPT_TITLE AS 부서이름
+FROM EMPLOYEE
+JOIN DEPARTMENT ON DEPT_ID = DEPT_CODE
+JOIN JOB USING (JOB_CODE)
+WHERE DEPT_CODE IN ('D5','D6');
+
+--5. 보너스를 받는 사원의 사원 명, 부서 명, 지역 명 조회
+
+SELECT EMP_NAME AS 사원명, DEPT_TITLE AS 부서명, LOCAL_NAME AS 직역명
+FROM EMPLOYEE
+JOIN DEPARTMENT ON DEPT_CODE = DEPT_ID
+JOIN LOCATION  ON LOCAL_CODE = LOCATION_ID
+WHERE NVL( BONUS,0) >0;
+
+-- 6. 사원 명, 직급 명, 부서 명, 지역 명 조회
+
+SELECT EMP_NAME , JOB_NAME, DEPT_TITLE, LOCAL_NAME
+FROM EMPLOYEE
+JOIN DEPARTMENT ON DEPT_ID = DEPT_CODE
+JOIN JOB USING (JOB_CODE)
+JOIN LOCATION  ON LOCAL_CODE = LOCATION_ID;
+
+--7.한국이나 일본에서 근무 중인 사원의 사원 명, 부서 명, 지역 명, 국가 명 조회
+
+SELECT EMP_NAME , DEPT_TITLE, LOCAL_NAME, NATIONAL_NAME
+FROM EMPLOYEE
+JOIN DEPARTMENT ON DEPT_ID = DEPT_CODE
+JOIN JOB USING (JOB_CODE)
+JOIN LOCATION  ON LOCAL_CODE = LOCATION_ID
+JOIN NATIONAL USING (NATIONAL_CODE);
+
+-- 8. 한 사원과 같은 부서에서 일하는 사원의 이름 조회
+
+SELECT EMP_NAME, DEPT_CODE, (SELECT 
+FROM EMPLOYEE;
+
+
+-- 9. 보너스가 없고 직급 코드가 J4이거나 J7인 사원의 이름, 직급 명 , 급여 조회(NVL이용)
+
+SELECT EMP_NAME, JOB_NAME, (SALARY + SALARY*NVL(BONUS,0)) AS 급여
+FROM EMPLOYEE
+JOIN JOB USING (JOB_CODE);
+
+-- 10.보너스 포함한 연봉이 높은 5명의 사번, 이름, 부서 명, 직급, 입사일, 순위 조회
+
+SELECT EMP_ID, EMP_NAME ,DEPT_TITLE, JOB_NAME, HIRE_DATE, ROWNUM
+FROM (
+SELECT EMP_ID, EMP_NAME, DEPT_TITLE, JOB_NAME, HIRE_DATE ,ROWNUM
+FROM EMPLOYEE 
+JOIN DEPARTMENT ON DEPT_CODE = DEPT_ID
+JOIN JOB USING (JOB_CODE)
+ORDER BY SALARY DESC
+)
+WHERE ROWNUM<=5;
+
+-- 11. 부서 별 급여 합계가 전체 급여 총 합의 20% 보다 많은 부서의 부서명, 부서별 급여
+-- 합계 조회
+
+-- 11. JOIN과 HAVING 사용
+-- 그룹합수 내에서 서브 쿼리문 사용이 불가능하다.
+SELECT DEPT_TITLE, SUM(SALARY)
+FROM EMPLOYEE
+JOIN DEPARTMENT ON DEPT_ID = DEPT_CODE
+GROUP BY DEPT_TITLE
+HAVING SUM(SALARY) > (SELECT SUM(SALARY) FROM EMPLOYEE) *0.2 ;
+
+SELECT * FROM NATIONAL;
+
+-- 11-2. 인라인 뷰 사용
+
+--11-3 WITH 이용
+
+-- 12. 부서 명과 부서별 급여 합계 조회 -- LEFT JOIN을 사용해서 NULL 값도 출력하기
+
+SELECT DEPT_TITLE, SUM(SALARY)
+FROM EMPLOYEE
+LEFT JOIN DEPARTMENT ON DEPT_ID = DEPT_CODE
+GROUP BY DEPT_TITLE;
