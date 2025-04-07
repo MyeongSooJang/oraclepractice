@@ -226,7 +226,7 @@ WHERE JOB_CODE <> 'J2';
 
 -- 날짜값에 대한 대소비교하기
 -- 'YY/MM/DD'
--- 00/01/01이후 입사자 조회하기  
+-- 00/01/01이후 입사자 조회하기      
 
 SELECT EMP_NAME, HIRE_DATE
 FROM EMPLOYEE
