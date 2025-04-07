@@ -1,0 +1,62 @@
+DROP TABLE EMP_PRACTICE;
+DROP TABLE EMP_TEMP1;
+
+CREATE TABLE EMP_PRACTICE 
+AS SELECT * FROM EMPLOYEE
+JOIN JOB USING (JOB_CODE);  
+---> JOIN을 해서 만들어도 프로시저에 사용이 가능하다.
+
+SELECT * FROM EMP_PRACTICE;
+-- EMPLOYEE와 같은 테이블 --1
+
+
+---> EMP_DEL1을 만드는데 EMPLOYEE 테이블을 가져와서 만든다.
+
+CREATE TABLE EMP_TEMP1(
+    EMP_ID NUMBER,
+    EMP_NAME VARCHAR2(20),
+    SALARY NUMBER,
+    HIRE_DATE DATE,
+    JOB_CODE VARCHAR2(20),
+    JOB_NAME VARCHAR2(20)
+);
+SELECT * FROM EMP_TEMP1;
+--> 잠시 담아둘 테이블을 하나 형성(비어있음) --1
+
+--> JOB_CODE가 J5인 사람을 TEMP1에 담기
+CREATE OR REPLACE PROCEDURE PRACTICE1 --> 자바로 치면 pubic void method1(){} 이런 메소드 와 비슷하다.
+IS
+BEGIN
+    FOR E IN (SELECT * FROM EMP_PRACTICE)
+    ---> E라는 테이블(객체) 안에 DEL1을 넣는다.
+    
+    LOOP
+    IF E.JOB_CODE = 'J5'
+        THEN INSERT INTO EMP_TEMP1(EMP_ID, EMP_NAME, SALARY, HIRE_DATE, JOB_CODE,JOB_NAME)
+        
+        VALUES (E.EMP_ID, E.EMP_NAME, E.SALARY, E.HIRE_DATE, E.JOB_CODE,E.JOB_NAME);
+        
+        -- 아무것도 TEMP1에 JOB_CODE가 J5인 정보를 집어 넣는다.;
+    END IF;
+    END LOOP;
+    DELETE FROM EMP_PRACTICE;
+    -- COMMIT은 꼭해주기
+    COMMIT;
+END;
+ /
+ -- > 실행하면 프로시저가 생성이 된다.
+EXEC PRACTICE1;
+-- 프로시저 실행
+SELECT * FROM EMP_TEMP1;
+-->  채워짐 --2
+SELECT * FROM EMP_PRACTICE;
+-->  빈 테이블 --2  
+
+
+-- 프로시저는 JAVA에서의 메소드와 비슷하다. 
+-- CREATE PROCEDUTE 프로시저이름 
+-- IS 
+-- BEGIN 
+-- 프로시저가 수행할 것
+-- END;
+-- 프로시저를 실행시키는 것은 EXEC 프로시저이름
