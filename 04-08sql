@@ -1,0 +1,243 @@
+-- 매개변수 있는 프로시저
+-- IN매개변수 : 프로시저를 실행할때 필요한 데이터를 외부에서 받는 매개변수 -> 일반적인 매개변수
+-- OUT매개변수 : 호출한 곳에서 저장한 변수에 실행결과를 저장할 수 있게 하는 변수 -> RETURN과 유사
+
+CREATE OR REPLACE PROCEDURE PRO_PARAM(V_EMP IN  EMPLOYEE.EMP_ID%TYPE, 
+                                V_NAME OUT EMPLOYEE.EMP_NAME %TYPE)
+IS
+    NAME VARCHAR2(20);
+BEGIN 
+    SELECT EMP_NAME
+    INTO NAME
+    FROM EMPLOYEE
+    WHERE EMP_ID = V_EMP;
+    
+    DBMS_OUTPUT.PUT_LINE(NAME);
+    V_NAME := NAME;
+END;
+/
+
+SET SERVEROUTPUT ON;
+    
+    -- 전역변수 선언하기
+VAR TEST VARCHAR2(50);
+PRINT TEST;
+EXEC PRO_PARAM('&사원번호',:TEST);
+
+-- FUNCTION 객체 만들기 --> 단일행함수를 만드는 것
+-- 반환형, 매개변수 있음
+-- SELECT, UPDATE, INSERT 문에 사용이 가능하다.
+-- CREATE [OR REPLACE] FUNCTION 함수명 ( 매개변수[, 매개변수2 ....])
+-- RETURN 타입
+-- IS
+-- [변수 선언]
+-- BEGIN
+-- 실행로직
+-- RETURN을 써야한다.
+-- END;
+-- /
+
+-- 사원 아이디를 전달받아 연봉을 계산해주는 기능만들기
+
+CREATE OR REPLACE FUNCTION YEAR_SAL(V_EMPID EMPLOYEE.EMP_ID%TYPE)
+RETURN NUMBER
+IS
+    TOTAL_SAL NUMBER;
+BEGIN 
+    SELECT SALARY *12 
+    INTO TOTAL_SAL
+    FROM EMPLOYEE
+    WHERE EMP_ID = V_EMPID;
+    
+    RETURN TOTAL_SAL;
+END;
+/
+
+SELECT YEAR_SAL(600)
+FROM DUAL;
+
+SELECT E.*,YEAR_SAL(EMP_ID) FROM EMPLOYEE E;
+
+-- 트리거 이용하기
+-- 트리거 : 특정테이블에 DML 구문을 실행하면 자동으로 지정한 로직이 실행하는 객체
+-- CREATE [OR REPLACE] TRIGGER 트리거명
+-- 실행시점(BEFORE / AFTER) 의 DML 구문(INSERT, UPDATE, DELETE) ON 대상테이블
+-- FOR EACH ROW
+-- BEGIN
+-- 실행한 로직
+-- END;
+-- /
+
+DROP TRIGGER TRG_NEEMP;
+
+-- 사원이 등록되면 로그를 출력하는 트리거 만들기
+
+CREATE OR REPLACE TRIGGER TRG_NEWEMP
+AFTER INSERT ON EMPLOYEE
+FOR EACH ROW
+BEGIN
+    -- 추가 / 변경 / 삭제 되는 데이터 가져오기
+    -- 이전값  새로운 값
+    -- INSERT : 이전값 X , 새로운 값 O
+    -- UPDATE : 이전값 O, 새로운 값 O
+    -- DELETE : 이전값 O, 새로운 값 X
+    -- 값에 접근하기
+    -- 이전 : OLD -> :OLD 컬럼명
+    -- 새로운 : NEW -> :NEW 컬럼명
+    DBMS_OUTPUT.PUT_LINE('신입사원' ||:NEW.EMP_NAME ||'이 입사 했습니다.' ||'  '||SYSDATE);
+END;
+/
+
+-- 자료 삽입
+INSERT INTO EMPLOYEE VALUES('996','홍길동','771028-1234567','HONG@HONG.COM','010333444','D3','J5'
+                                                    ,'S1',30,0.5,200,SYSDATE,NULL,DEFAULT);
+
+INSERT INTO EMPLOYEE VALUES('981','박세웅','771028-1234567','HONG@HONG.COM','010333444','D3','J5'
+                                                    ,'S1',25,0.5,200,SYSDATE,NULL,DEFAULT);
+SELECT * FROM USER_TRIGGERS;
+DROP TRIGGER TRG_NEWMNP;
+
+
+-- 상품 테이블 생성하기
+
+CREATE TABLE PRODUCT_TG(
+    PCODE NUMBER PRIMARY KEY,
+    PNAME VARCHAR2(20) NOT NULL,
+    BRAND VARCHAR2(20),
+    PRICE NUMBER CHECK(PRICE>0),
+    STOCK NUMBER DEFAULT 0
+);    
+
+-- 상품입출고 테이블
+CREATE TABLE PRODUCT_IO(
+    IOCODE NUMBER PRIMARY KEY,
+    IDDATE DATE DEFAULT SYSDATE,
+    STATUS VARCHAR2(10) CHECK(STATUS IN('입고','출고')),
+    AMOUNT NUMBER CHECK (AMOUNT >0),
+    PRODUCT_REF NUMBER CONSTRAINT FK_PROIO_PCODE REFERENCES PRODUCT_TG(PCODE)
+);
+    
+ SELECT * FROM PRODUCT_TG;
+SELECT * FROM PRODUCT_IO;
+
+CREATE SEQUENCE SEQ_PRODUCT_NO;
+CREATE SEQUENCE SEQ_PROIO_NO;
+    
+INSERT INTO PRODUCT_TG VALUES(SEQ_PRODUCT_NO.NEXTVAL, '에너지바','포스트',2000,DEFAULT);
+INSERT INTO PRODUCT_TG VALUES(SEQ_PRODUCT_NO.NEXTVAL, '아이패드PRO','애플',2300000,DEFAULT);  
+INSERT INTO PRODUCT_TG VALUES(SEQ_PRODUCT_NO.NEXTVAL, '카니발','기아',55000000,DEFAULT);  
+INSERT INTO PRODUCT_TG VALUES(SEQ_PRODUCT_NO.NEXTVAL, '맥북PRO','애플',3000000,DEFAULT);  
+INSERT INTO PRODUCT_TG VALUES(SEQ_PRODUCT_NO.NEXTVAL, '갤럭시폴드','삼성',2300000,DEFAULT);  
+------------------------------------------------------------------------------------------------------------------------------------------
+--INSERT INTO PRODUCT_IO VALUES(SEQ_PROIO_NO.NEXTVAL,DEFAULT,'입고',3,3);
+--UPDATE PRODUCT_TG SET STOCK = STOCK + (
+--                                                        SELECT AMOUNT FROM PRODUCT_IO WHERE PRODUCT_REF =3
+--                                                        AND IOCODE = (SELECT MAX(IOCODE) FROM PRODUCT_IO)
+--                                                        AND STATUS = '입고')
+--WHERE PCODE = 3;
+------------------------------------------------------------------------------------------------------------------------------------------      
+INSERT INTO PRODUCT_IO VALUES(SEQ_PROIO_NO.NEXTVAL,DEFAULT,'입고',3,3);
+INSERT INTO PRODUCT_IO VALUES(SEQ_PROIO_NO.NEXTVAL,DEFAULT,'입고',10,5);
+INSERT INTO PRODUCT_IO VALUES(SEQ_PROIO_NO.NEXTVAL,DEFAULT,'출고',1,3);
+
+SELECT * FROM PRODUCT_TG;
+SELECT * FROM PRODUCT_IO;
+
+DELETE FROM PRODUCT_IO;
+  
+---------------------------------------------------------------------입출고 재고 메소드----------------------------------------------
+CREATE OR REPLACE TRIGGER TRG_PRODUCT_STOCK
+AFTER INSERT ON PRODUCT_IO
+FOR EACH ROW
+BEGIN
+    IF :NEW.STATUS = '입고'
+        THEN UPDATE PRODUCT_TG SET STOCK = STOCK + :NEW.AMOUNT WHERE PCODE = :NEW.PRODUCT_REF;
+    ELSIF :NEW.STATUS = '출고'
+        THEN UPDATE PRODUCT_TG SET STOCK = STOCK - :NEW.AMOUNT WHERE PCODE = :NEW.PRODUCT_REF;
+    END IF;
+     COMMIT;
+END;
+/
+---------------------------------------------------------------JOB------------------------------------------------------------------
+  
+-- DBMS가 특정시점에 반복적으로 실행하는 로직을 등록
+-- CREATE JOB 권한이 이쓴 사용자만 활용이 가능  -> 기본적으로 없다!
+
+GRANT CREATE JOB TO BS;  -- > 관리자로 실행
+
+-- JOB SCHEDULER를 등록하기
+-- DBMS_SCHEDULER_CREATE _JOB() 함수를 호출
+-- 매개변수설정값
+-- 속성명 => '값',속성명 => '값',....
+-- JOB_NAME => '값' : 작업이름
+-- JOB_TYPE => 'PLSQL_BLOCK' /  'STORED_PROCEDURE(내부)' / 'EXCUTABLE(외부)' : 작업실행방법
+-- JOB_ACTION => '작업실행방법에 따라 작성법이 다름' : 실행할 로직을 설정
+-- START_DATE => TIMESTAMP형, : 작업시작 날짜
+-- REPEAT_INTERVAL => ":반복주기 설정
+--      반복주기 설정
+--          FREQ = DAILY / MONTHLY / MINNUTELY / WEEKLY / SECONDLY / HOURLY
+--          BYMONTH = 달, BYMONTHDAY = 날 , BYDAY, BYMINNUTE = 분 , BYSECOND = 초 , INTERVAL = 간격(시간,분)
+-- ENABLED => TRUE 활성화여부
+-- COMMENTS => 'JOB설명'
+
+CREATE TABLE JOB_TEST(
+    TEST_NO NUMBER PRIMARY KEY,
+    TEST_CONTENT VARCHAR2(200)
+);
+
+CREATE SEQUENCE SEQ_TESTNO;
+BEGIN
+    FOR I IN 1..100 LOOP
+        INSERT INTO JOB_TEST VALUES (SEQ_TESTNO.NEXTVAL,DBMS_RANDOM.STRING('P',100));
+    END LOOP;
+    COMMIT;
+END;
+/
+
+-- 1분에 한개씩 삭제하기
+-- JOB_SCHEDULER 등록하기
+
+BEGIN
+    DBMS_SCHEDULER.CREATE_JOB(
+        JOB_NAME => 'DELETE_JOB',
+        -- JOB_ACTION에 PLSQL구문을 직접작성
+        JOB_TYPE => 'PLSQL_BLOCK',
+        JOB_ACTION => 'BEGIN DELETE FROM JOB_TEST WHERE TEST_NO =(SELECT MIN(TEST_NO) FROM JOB_TEST);
+                                END;',
+        START_DATE => SYSTIMESTAMP,
+        REPEAT_INTERVAL => 'FREQ = MINUTELY; INTERVAL=1',
+        COMMENTS => 'JOB테이블 1분마다 삭제'
+    );
+END;
+/
+BEGIN
+   DBMS_SCHEDULER.ENABLE('DELETE_JOB');-- 실행
+--    DBMS_SCHEDULER.DISABLE('DELETE_JOB'); -- 중단
+--    DBMS_SCHEDULER.DROP_JOB('DELETE_JOB'); -- 삭제
+    
+END;
+/
+SELECT * FROM USER_SCHEDULER_JOBS;
+SELECT * FROM JOB_TEST;
+
+
+-- 계층형 쿼리 -- > 댓글,대댓글
+SELECT * FROM EMPLOYEE;
+ROLLBACK;
+
+SELECT LEVEL||' '||LPAD(' ',(LEVEL-1)*5,' ')||EMP_NAME||NVL2(MANAGER_ID,'('||MANAGER_ID||')','') AS 조직도
+FROM EMPLOYEE
+--START WITH EMP_ID = 200
+START WITH MANAGER_ID IS NULL
+CONNECT BY PRIOR EMP_ID = MANAGER_ID;
+
+
+
+
+
+
+
+
+
+
+
